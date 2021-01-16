@@ -16,7 +16,7 @@ namespace SprinklerActivation
     public class SprinklerActivation : Mod
     {
         private ModConfig Config;
-        private object BetterSprinklersApi, PrismaticToolsApi;
+        private object BetterSprinklersApi, PrismaticToolsApi, SimpleSprinklerApi;
         private bool LineSprinklersIsLoaded;
         private Multiplayer mp;
 
@@ -54,6 +54,11 @@ namespace SprinklerActivation
             if (Helper.ModRegistry.IsLoaded("stokastic.PrismaticTools"))
             {
                 PrismaticToolsApi = Helper.ModRegistry.GetApi("stokastic.PrismaticTools");
+            }
+
+            if(Helper.ModRegistry.IsLoaded("tZed.SimpleSprinkler"))
+            {
+                SimpleSprinklerApi = Helper.ModRegistry.GetApi("tZed.SimpleSprinkler");
             }
 
             LineSprinklersIsLoaded = Helper.ModRegistry.IsLoaded("hootless.LineSprinklers");
@@ -104,6 +109,10 @@ namespace SprinklerActivation
                 else if (BetterSprinklersApi != null)
                 {
                     ActivateBetterSprinkler(sprinkler);
+                }
+                else if(SimpleSprinklerApi != null)
+                {
+                    ActivateSimpleSprinkler(sprinkler);
                 }
                 else
                 {
@@ -168,6 +177,29 @@ namespace SprinklerActivation
                 playAnimation(sprinklerTile, animSize.LARGE);
 
         }
+
+        private void ActivateSimpleSprinkler(StardewValley.Object sprinkler)
+        {
+            IDictionary<int, Vector2[]> coverageList = Helper.Reflection.GetMethod(SimpleSprinklerApi, "GetNewSprinklerCoverage").Invoke<IDictionary<int, Vector2[]>>();
+            Vector2[] coverage = coverageList[sprinkler.ParentSheetIndex];
+            Vector2 sprinklerTile = sprinkler.TileLocation;
+
+            float max = Math.Abs(coverage[0].X);
+
+            foreach (Vector2 v in coverage)
+            {
+                WaterTile(sprinklerTile + v);
+                max = Math.Max(Math.Abs(v.X), max);
+                max = Math.Max(Math.Abs(v.Y), max);
+            }
+            if (max < 2)
+                playAnimation(sprinklerTile, animSize.SMALL);
+            else if (max < 3)
+                playAnimation(sprinklerTile, animSize.MEDIUM);
+            else
+                playAnimation(sprinklerTile, animSize.LARGE);
+        }
+
 
         private void ActivateLineSprinkler(StardewValley.Object sprinkler)
         {
