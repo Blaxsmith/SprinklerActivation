@@ -19,6 +19,14 @@ namespace SprinklerActivation
         private object BetterSprinklersApi, PrismaticToolsApi;
         private bool LineSprinklersIsLoaded;
         private Multiplayer mp;
+
+        enum animSize
+        {
+            SMALL,
+            MEDIUM,
+            LARGE
+        }
+
         public override void Entry(IModHelper helper)
         {
             Config = Helper.ReadConfig<ModConfig>();
@@ -114,6 +122,7 @@ namespace SprinklerActivation
                 {
                     WaterTile(v);
                 }
+                playAnimation(sprinklerTile, animSize.MEDIUM);
             }
             else if (sprinkler.Name.Contains("Iridium"))
             {
@@ -124,6 +133,7 @@ namespace SprinklerActivation
                         Vector2 v = new Vector2((float)i, (float)j);
                         WaterTile(v);
                     }
+                    playAnimation(sprinklerTile, animSize.LARGE);
                 }
             }
             else
@@ -132,6 +142,7 @@ namespace SprinklerActivation
                 {
                     WaterTile(v);
                 }
+                playAnimation(sprinklerTile, animSize.SMALL);
             }
         }
 
@@ -141,10 +152,21 @@ namespace SprinklerActivation
             Vector2[] coverage = coverageList[sprinkler.ParentSheetIndex];
             Vector2 sprinklerTile = sprinkler.TileLocation;
 
+            float max = Math.Abs(coverage[0].X);
+
             foreach (Vector2 v in coverage)
             {
                 WaterTile(sprinklerTile + v);
+                max = Math.Max(Math.Abs(v.X), max);
+                max = Math.Max(Math.Abs(v.Y), max);
             }
+            if (max < 2)
+                playAnimation(sprinklerTile, animSize.SMALL);
+            else if (max < 3)
+                playAnimation(sprinklerTile, animSize.MEDIUM);
+            else
+                playAnimation(sprinklerTile, animSize.LARGE);
+
         }
 
         private void ActivateLineSprinkler(StardewValley.Object sprinkler)
@@ -161,7 +183,7 @@ namespace SprinklerActivation
                 for (int i = 0; i < range; i++)
                 {
                     waterTile.Y--;
-                    WaterTile(waterTile);
+                    WaterTile(waterTile, true);
                 }
             }
             else if (sprinkler.Name.Contains("(L)"))
@@ -169,7 +191,7 @@ namespace SprinklerActivation
                 for (int i = 0; i < range; i++)
                 {
                     waterTile.X--;
-                    WaterTile(waterTile);
+                    WaterTile(waterTile, true);
                 }
             }
             else if (sprinkler.Name.Contains("(R)"))
@@ -177,7 +199,7 @@ namespace SprinklerActivation
                 for (int i = 0; i < range; i++)
                 {
                     waterTile.X++;
-                    WaterTile(waterTile);
+                    WaterTile(waterTile, true);
                 }
             }
             else if (sprinkler.Name.Contains("(D)"))
@@ -185,7 +207,7 @@ namespace SprinklerActivation
                 for (int i = 0; i < range; i++)
                 {
                     waterTile.Y++;
-                    WaterTile(waterTile);
+                    WaterTile(waterTile, true);
                 }
             }
         }
@@ -195,13 +217,22 @@ namespace SprinklerActivation
             Vector2 sprinklerTile = sprinkler.TileLocation;
             IEnumerable<Vector2> coverage = Helper.Reflection.GetMethod(PrismaticToolsApi, "GetSprinklerCoverage").Invoke<IEnumerable<Vector2>>(sprinklerTile);
 
+            float max = Math.Abs(coverage.First().X);
             foreach (Vector2 v in coverage)
             {
                 WaterTile(v);
+                max = Math.Max(Math.Abs(v.X), max);
+                max = Math.Max(Math.Abs(v.Y), max);
             }
+            if (max < 2)
+                playAnimation(sprinklerTile, animSize.SMALL);
+            else if (max < 3)
+                playAnimation(sprinklerTile, animSize.MEDIUM);
+            else
+                playAnimation(sprinklerTile, animSize.LARGE);
         }
 
-        private void WaterTile(Vector2 tile)
+        private void WaterTile(Vector2 tile, bool useWatercanAnimation = false)
         {
             TerrainFeature terrainFeature;
             StardewValley.Object obj;
@@ -216,7 +247,8 @@ namespace SprinklerActivation
             if(obj != null)
                 obj.performToolAction(can, (GameLocation)null);
 
-            if (mp != null)
+            //Watercan animation (only for sline sprinklers, because default animation don't make any sense here
+            if (mp != null && useWatercanAnimation)
             {
                 mp.broadcastSprites(loc, new TemporaryAnimatedSprite[]
                 {
@@ -225,6 +257,73 @@ namespace SprinklerActivation
                         delayBeforeAnimationStart = 150
                     }
                 });
+            }
+        }
+
+        private void playAnimation(Vector2 sprinklerTile, animSize size)
+        {
+            if (mp == null)
+                return;
+
+            int animDelay = Game1.random.Next(500);
+            float animId = (float)((double)sprinklerTile.X * 4000.0 + (double)sprinklerTile.Y);
+            Vector2 pos = sprinklerTile * (float)Game1.tileSize;
+            int numberOfLoops = 50;
+
+            switch (size)
+            {
+                case animSize.SMALL:
+                    mp.broadcastSprites(Game1.currentLocation, new TemporaryAnimatedSprite[]
+                    {
+                        new TemporaryAnimatedSprite(29, pos + new Vector2(0.0f, (float)(-Game1.tileSize * 3 / 4)), Color.White * 0.5f, 4, false, 60f, numberOfLoops, -1, -1f, -1, 0)
+                        {
+                            delayBeforeAnimationStart = animDelay,
+                            id = animId
+                        },
+                        new TemporaryAnimatedSprite(29, pos + new Vector2((float)(Game1.tileSize * 3 / 4), 0.0f), Color.White * 0.5f, 4, false, 60f, numberOfLoops, -1, -1f, -1, 0)
+                        {
+                            rotation = 1.570796f,
+                            delayBeforeAnimationStart = animDelay,
+                            id = animId
+                        },
+                        new TemporaryAnimatedSprite(29, pos + new Vector2(0.0f, (float)(Game1.tileSize * 3 / 4)), Color.White * 0.5f, 4, false, 60f, numberOfLoops, -1, -1f, -1, 0)
+                        {
+                            rotation = 3.141593f,
+                            delayBeforeAnimationStart = animDelay,
+                            id = animId
+                        },
+                        new TemporaryAnimatedSprite(29, pos + new Vector2((float)(-Game1.tileSize * 3 / 4), 0.0f), Color.White * 0.5f, 4, false, 60f, numberOfLoops, -1, -1f, -1, 0)
+                        {
+                            rotation = 4.712389f,
+                            delayBeforeAnimationStart = animDelay,
+                            id = animId
+                        }
+                    });
+                    break;
+                case animSize.MEDIUM:
+                    pos -= new Vector2(Game1.tileSize, Game1.tileSize);
+                    mp.broadcastSprites(Game1.currentLocation, new TemporaryAnimatedSprite[]
+                    {
+                        new TemporaryAnimatedSprite(Game1.animations.Name, new Rectangle(0, 1984, Game1.tileSize * 3, Game1.tileSize * 3), 60f, 3, numberOfLoops, pos, false, false)
+                        {
+                            color = Color.White * 0.4f,
+                            delayBeforeAnimationStart = animDelay,
+                            id = animId
+                        }
+                    });
+                    break;
+                case animSize.LARGE:
+                    pos += new Vector2(-3 * Game1.tileSize + Game1.tileSize, -Game1.tileSize * 2);                    
+                    mp.broadcastSprites(Game1.currentLocation, new TemporaryAnimatedSprite[]
+                    {
+                        new TemporaryAnimatedSprite(Game1.animations.Name, new Rectangle(0, 2176, Game1.tileSize * 5, Game1.tileSize * 5), 60f, 4, numberOfLoops, pos, false, false)
+                        {
+                            color = Color.White * 0.4f,
+                            delayBeforeAnimationStart = animDelay,
+                            id = animId
+                        }
+                    });
+                    break;
             }
         }
     }
