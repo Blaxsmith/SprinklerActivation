@@ -88,6 +88,13 @@ namespace SprinklerActivation
                 var obj = Game1.currentLocation.getObjectAtTile((int)tile.X, (int)tile.Y);
                 if (obj == null) return;
 
+                var currentItem = Game1.player.CurrentItem;
+
+                if(currentItem != null && currentItem.parentSheetIndex == 915 && (obj.heldObject.Value == null || obj.heldObject.Value.parentSheetIndex != 915)) //currently holding pressurized nozzle and sprinkler has no nozzle
+                {
+                    return;
+                }
+
                 ActivateSprinkler(obj);
             }
         }
@@ -96,7 +103,7 @@ namespace SprinklerActivation
         {
             if (sprinkler == null) return;
 
-            if (sprinkler.Name.Contains("Sprinkler"))
+            if (sprinkler.IsSprinkler() || sprinkler.Name.Contains("Sprinkler"))
             {
                 if (LineSprinklersIsLoaded && sprinkler.Name.Contains("Line"))
                 {
@@ -124,34 +131,28 @@ namespace SprinklerActivation
         private void ActivateVanillaSprinkler(StardewValley.Object sprinkler)
         {
             Vector2 sprinklerTile = sprinkler.TileLocation;
-            if (sprinkler.Name.Contains("Quality"))
+            int range = sprinkler.GetModifiedRadiusForSprinkler();
+            if (range < 0)
             {
-                Vector2[] coverage = Utility.getSurroundingTileLocationsArray(sprinklerTile);
-                foreach (Vector2 v in coverage)
-                {
-                    WaterTile(v);
-                }
-                playAnimation(sprinklerTile, animSize.MEDIUM);
+                Monitor.Log($"Invalid sprinkler range: {range}", LogLevel.Error);
+                return;
             }
-            else if (sprinkler.Name.Contains("Iridium"))
+            List<Vector2> coverage = sprinkler.GetSprinklerTiles();
+            foreach(Vector2 v in coverage)
             {
-                for (int i = (int)sprinklerTile.X - 2; (float)i <= sprinklerTile.X + 2f; i++)
-                {
-                    for (int j = (int)sprinklerTile.Y - 2; (float)j <= sprinklerTile.Y + 2f; j++)
-                    {
-                        Vector2 v = new Vector2((float)i, (float)j);
-                        WaterTile(v);
-                    }
+                WaterTile(v);
+            }
+            switch(range)
+            {
+                case 0:
+                    playAnimation(sprinklerTile, animSize.SMALL);
+                    break;
+                case 1:
+                    playAnimation(sprinklerTile, animSize.MEDIUM);
+                    break;
+                default:
                     playAnimation(sprinklerTile, animSize.LARGE);
-                }
-            }
-            else
-            {
-                foreach (Vector2 v in Utility.getAdjacentTileLocations(sprinklerTile))
-                {
-                    WaterTile(v);
-                }
-                playAnimation(sprinklerTile, animSize.SMALL);
+                    break;
             }
         }
 
