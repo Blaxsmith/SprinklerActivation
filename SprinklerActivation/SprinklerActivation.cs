@@ -11,6 +11,8 @@ using StardewValley;
 using StardewValley.TerrainFeatures;
 using StardewValley.Tools;
 
+using LineSprinklersRedux;
+
 namespace SprinklerActivation
 {
     public class SprinklerActivation : Mod
@@ -19,7 +21,9 @@ namespace SprinklerActivation
         private object? BetterSprinklersApi = null;
         private object? PrismaticToolsApi = null;
         private object? SimpleSprinklerApi = null;
+        private ILineSprinklersReduxAPI LineSprinklersReduxApi = null;
         private bool LineSprinklersIsLoaded;
+        
         private Multiplayer? mp = null;
 
         enum animSize
@@ -63,7 +67,13 @@ namespace SprinklerActivation
                 SimpleSprinklerApi = Helper.ModRegistry.GetApi("tZed.SimpleSprinkler");
             }
 
+            if (Helper.ModRegistry.IsLoaded("rtrox.LineSprinklersRedux"))
+            {
+                LineSprinklersReduxApi = Helper.ModRegistry.GetApi<ILineSprinklersReduxAPI>("rtrox.LineSprinklersRedux");
+            }
+
             LineSprinklersIsLoaded = Helper.ModRegistry.IsLoaded("hootless.LineSprinklers");
+           
         }
 
         private void OnWorld_ObjectListChanged(object sender, ObjectListChangedEventArgs e)
@@ -108,6 +118,11 @@ namespace SprinklerActivation
                 if (LineSprinklersIsLoaded && sprinkler.Name.Contains("Line"))
                 {
                     ActivateLineSprinkler(sprinkler);
+                }
+                else if (LineSprinklersReduxApi != null && LineSprinklersReduxApi.IsLineSprinkler(sprinkler))
+                {
+                    LineSprinklersReduxApi.ApplySprinkler(sprinkler);
+                    LineSprinklersReduxApi.PlaySprinklerAnimation(sprinkler, Game1.random.Next(500));
                 }
                 else if (PrismaticToolsApi != null && sprinkler.Name.Contains("Prismatic"))
                 {
