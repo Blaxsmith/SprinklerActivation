@@ -50,6 +50,7 @@ namespace SprinklerActivation
             }
             mp = helper.Reflection.GetField<Multiplayer>(typeof(Game1), "multiplayer").GetValue();
         }
+
         private void OnGameLaunch(object sender, GameLaunchedEventArgs e)
         {
             if (Helper.ModRegistry.IsLoaded("Speeder.BetterSprinklers"))
